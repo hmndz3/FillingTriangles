@@ -246,6 +246,60 @@ mod tests {
         assert_eq!(fragmentos.len(), unicos.len());
     }
 
+    /// Casos donde un vertice o una arista cae justo sobre la fila que se esta
+    /// recorriendo. Las dos implementaciones usan la misma regla (el centro del
+    /// pixel cuenta como dentro cuando esta sobre la arista), asi que tienen que
+    /// generar exactamente las mismas posiciones.
+    #[test]
+    fn las_aristas_horizontales_siguen_la_misma_regla() {
+        let casos: [[Vec2; 3]; 6] = [
+            // Arista horizontal abajo, sobre el borde de los pixeles.
+            [
+                Vec2::new(2.0, 2.0),
+                Vec2::new(10.0, 2.0),
+                Vec2::new(6.0, 9.0),
+            ],
+            // Arista horizontal justo sobre los centros de una fila.
+            [
+                Vec2::new(2.0, 2.5),
+                Vec2::new(10.0, 2.5),
+                Vec2::new(6.0, 9.5),
+            ],
+            // Arista horizontal arriba.
+            [
+                Vec2::new(3.0, 11.0),
+                Vec2::new(12.0, 11.0),
+                Vec2::new(5.0, 3.0),
+            ],
+            // Arista vertical a la izquierda.
+            [
+                Vec2::new(4.0, 1.0),
+                Vec2::new(4.0, 10.0),
+                Vec2::new(13.0, 6.0),
+            ],
+            // Vertice con la coordenada y en el centro exacto de una fila.
+            [
+                Vec2::new(1.5, 4.5),
+                Vec2::new(9.5, 4.5),
+                Vec2::new(5.5, 12.5),
+            ],
+            // Triangulo muy delgado: una fila puede quedarse sin centros.
+            [
+                Vec2::new(1.0, 1.0),
+                Vec2::new(14.0, 1.4),
+                Vec2::new(14.0, 1.6),
+            ],
+        ];
+
+        for [a, b, c] in casos {
+            assert_eq!(
+                posiciones_scanline(a, b, c),
+                posiciones_baricentricas(a, b, c),
+                "difieren para {a:?} {b:?} {c:?}"
+            );
+        }
+    }
+
     #[test]
     fn cada_modo_tiene_nombre() {
         assert_eq!(TriangleMode::ALL.len(), 3);
