@@ -1,28 +1,31 @@
-== cargo run --release -- --benchmark-triangles ==
+Equipo: Windows 11, cargo 1.97.1, perfil release
+Fecha: 2026-10-21
+
+$ cargo run --release -- --benchmark-triangles
 escena: 6 triangulos, 100 rasterizaciones por tanda, 11 tandas
 
 modo             fragmentos  mediana/tanda  por corrida ns/fragmento      mejor
-wireframe              3484      10.6768ms    106.768µs        30.65   7.6512ms
-barycentric          164495     350.5307ms   3.505307ms        21.31 329.6888ms
-scanline             164495     267.6536ms   2.676536ms        16.27 252.7401ms
+wireframe              3484      10.6726ms    106.726µs        30.63   3.3696ms
+barycentric          164495     356.6707ms   3.566707ms        21.68 347.0902ms
+scanline             164495       269.13ms     2.6913ms        16.36 251.4748ms
 
 por caso (20 rasterizaciones por tanda, 7 tandas)
 
 caso                     fragmentos   baricentrico       scanline   relacion
-pequeno                          75          930ns          580ns      1.60x
-grande                        99810      2.47252ms     2.071365ms      1.19x
-orden_inverso                 99810      2.45513ms      2.00245ms      1.23x
-arista_horizontal             12000      138.725µs       69.495µs      2.00x
-arista_vertical               16510       183.24µs       99.195µs      1.85x
-parcialmente_afuera           36100      446.335µs      165.935µs      2.69x
-colineales                        0        1.265µs          280ns      4.52x
+pequeno                          75          880ns          525ns      1.68x
+grande                        99810      2.51757ms     1.998865ms      1.26x
+orden_inverso                 99810      2.52932ms      1.94755ms      1.30x
+arista_horizontal             12000        111.8µs       39.455µs      2.83x
+arista_vertical               16510       157.66µs       69.505µs      2.27x
+parcialmente_afuera           36100       384.68µs       117.46µs      3.27x
+colineales                        0          245ns          250ns      0.98x
 
-== cargo run --release -- --profile-phases ==
+$ cargo run --release -- --profile-phases
 modo           solo geometria       completo     fragmentos  geometria %
-barycentric        1.520845ms     3.563922ms         164495        42.7%
-scanline             13.257µs     2.644669ms         164495         0.5%
+barycentric        1.461755ms     3.669233ms         164495        39.8%
+scanline             13.271µs      2.77785ms         164495         0.5%
 
-== cargo run --release -- --compare-fills ==
+$ cargo run --release -- --compare-fills
 caso                    baricentr   scanline     solo bar    solo scan
 pequeno                        75         75            0            0
 grande                      99810      99810            0            0
