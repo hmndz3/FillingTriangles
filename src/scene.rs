@@ -4,7 +4,9 @@
 //! asi ninguna comparacion termina midiendo figuras distintas.
 
 use crate::color::Color;
-use crate::render::{assemble_triangles, Triangle};
+use crate::framebuffer::Framebuffer;
+use crate::render::{assemble_triangles, process_fragments, rasterize, Triangle};
+use crate::triangle::TriangleMode;
 use crate::vertex::{Vec2, Vertex};
 
 pub const WIDTH: usize = 800;
@@ -97,9 +99,20 @@ pub fn demo_triangles() -> Vec<Triangle> {
     assemble_triangles(&demo_vertices())
 }
 
+/// Dibuja la escena completa con un modo y devuelve el framebuffer.
+pub fn render_scene(mode: TriangleMode) -> Framebuffer {
+    let mut framebuffer = Framebuffer::new(WIDTH, HEIGHT);
+    framebuffer.set_background_color(Color::new(18, 18, 24));
+    framebuffer.clear();
+    let fragments = rasterize(&demo_triangles(), mode);
+    process_fragments(&mut framebuffer, &fragments);
+    framebuffer
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{demo_triangles, test_cases};
+    use super::{demo_triangles, render_scene, test_cases};
+    use crate::triangle::TriangleMode;
 
     #[test]
     fn la_escena_tiene_los_casos_pedidos() {
@@ -110,5 +123,18 @@ mod tests {
         assert!(nombres.contains(&"parcialmente_afuera"));
         assert!(nombres.contains(&"colineales"));
         assert_eq!(demo_triangles().len(), nombres.len() - 1);
+    }
+
+    #[test]
+    fn el_relleno_pinta_mas_pixeles_que_el_contorno() {
+        let fondo = render_scene(TriangleMode::Wireframe);
+        let contorno = fondo.buffer().iter().filter(|&&p| p != 0x0012_1218).count();
+        let relleno = render_scene(TriangleMode::FilledBarycentric)
+            .buffer()
+            .iter()
+            .filter(|&&p| p != 0x0012_1218)
+            .count();
+        assert!(contorno > 0);
+        assert!(relleno > contorno * 10);
     }
 }
