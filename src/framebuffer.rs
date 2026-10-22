@@ -97,9 +97,6 @@ impl Framebuffer {
 mod tests {
     use super::Framebuffer;
     use crate::color::Color;
-use std::fs::File;
-use std::io::{BufWriter, Write};
-use std::path::Path;
 
     #[test]
     fn pinta_dentro_del_area() {

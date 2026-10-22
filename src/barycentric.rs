@@ -7,7 +7,7 @@ use crate::vertex::{cross2, Vec2};
 ///
 /// Devuelve `None` cuando el area del triangulo es cero: en ese caso no hay
 /// nada entre que interpolar y dividir no tendria sentido.
-pub fn barycentric(a: Vec2, b: Vec2, c: Vec2, p: Vec2) -> Option<[f32; 3]> {
+pub fn barycentric(a: Vec2, b: Vec2, c: Vec2, p: Vec2) -> Option<[f64; 3]> {
     let area2 = cross2(a, b, c);
     if area2 == 0.0 {
         return None;
@@ -24,7 +24,7 @@ pub fn barycentric(a: Vec2, b: Vec2, c: Vec2, p: Vec2) -> Option<[f32; 3]> {
 
 /// Un punto esta dentro si sus tres coordenadas son positivas o cero. Los
 /// puntos justo sobre una arista cuentan como interiores.
-pub fn inside(weights: [f32; 3]) -> bool {
+pub fn inside(weights: [f64; 3]) -> bool {
     weights[0] >= 0.0 && weights[1] >= 0.0 && weights[2] >= 0.0
 }
 
@@ -48,7 +48,7 @@ mod tests {
     fn en_el_centroide_los_pesos_son_iguales() {
         let w = barycentric(A, B, C, Vec2::new(2.0, 2.0)).unwrap();
         for peso in w {
-            assert!((peso - 1.0 / 3.0).abs() < 1e-6);
+            assert!((peso - 1.0 / 3.0).abs() < 1e-9);
         }
         assert!(inside(w));
     }

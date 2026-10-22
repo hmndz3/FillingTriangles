@@ -23,8 +23,16 @@ impl Vec2 {
 
 /// Producto cruz en 2D de (b - a) x (c - a). Su signo indica el orden de los
 /// vertices y su magnitud es el doble del area del triangulo a-b-c.
-pub fn cross2(a: Vec2, b: Vec2, c: Vec2) -> f32 {
-    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+///
+/// Se evalua en f64 aunque las posiciones sean f32: con coordenadas de varios
+/// cientos de pixeles, el redondeo de f32 alcanza para que un centro que cae
+/// justo sobre una arista quede de un lado en un algoritmo y del otro lado en
+/// el otro.
+pub fn cross2(a: Vec2, b: Vec2, c: Vec2) -> f64 {
+    let (ax, ay) = (a.x as f64, a.y as f64);
+    let (bx, by) = (b.x as f64, b.y as f64);
+    let (cx, cy) = (c.x as f64, c.y as f64);
+    (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

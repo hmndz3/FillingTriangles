@@ -101,20 +101,22 @@ pub fn fill_scanline(a: Vec2, b: Vec2, c: Vec2, color: Color) -> Vec<Fragment> {
     }
     // Con este signo las tres desigualdades apuntan al interior sin importar el
     // orden en que vengan los vertices.
-    let signo = if area2 > 0.0 { 1.0 } else { -1.0 };
+    let signo: f64 = if area2 > 0.0 { 1.0 } else { -1.0 };
     let aristas = [(a, b), (b, c), (c, a)];
 
     let mut fragments = Vec::with_capacity(bounds.pixel_count() / 2 + 1);
     for y in bounds.rows() {
-        let fila = y as f32 + 0.5;
-        let mut desde = bounds.min_x as f32 + 0.5;
-        let mut hasta = bounds.max_x as f32 + 0.5;
+        let fila = y as f64 + 0.5;
+        let mut desde = bounds.min_x as f64 + 0.5;
+        let mut hasta = bounds.max_x as f64 + 0.5;
         let mut fila_vacia = false;
 
         for (p, q) in aristas {
             // signo * cross2(p, q, (x, fila)) = pendiente * x + termino >= 0
-            let pendiente = -signo * (q.y - p.y);
-            let termino = signo * ((q.x - p.x) * (fila - p.y) + (q.y - p.y) * p.x);
+            let (px, py) = (p.x as f64, p.y as f64);
+            let (qx, qy) = (q.x as f64, q.y as f64);
+            let pendiente = -signo * (qy - py);
+            let termino = signo * ((qx - px) * (fila - py) + (qy - py) * px);
 
             if pendiente > 0.0 {
                 // La arista cruza la fila por la izquierda del tramo.
@@ -147,7 +149,7 @@ pub fn fill_scanline(a: Vec2, b: Vec2, c: Vec2, color: Color) -> Vec<Fragment> {
 mod tests {
     use super::{fill_barycentric, fill_scanline, triangle, wireframe, TriangleMode};
     use crate::color::Color;
-    use crate::vertex::{cross2, Vec2};
+    use crate::vertex::Vec2;
     use std::collections::HashSet;
 
     #[test]
