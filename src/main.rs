@@ -1,14 +1,4 @@
-mod barycentric;
-mod bounds;
-mod color;
-mod fragment;
-mod framebuffer;
-mod line;
-mod render;
-mod triangle;
-mod vertex;
-
-use framebuffer::Framebuffer;
+use filling_triangles::framebuffer::Framebuffer;
 
 fn main() {
     let fb = Framebuffer::new(800, 600);
