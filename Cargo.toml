@@ -5,3 +5,8 @@ edition = "2021"
 
 [dependencies]
 minifb = "0.29"
+
+# El perfilador necesita simbolos para poder nombrar las funciones del binario
+# optimizado que se esta midiendo.
+[profile.release]
+debug = true
