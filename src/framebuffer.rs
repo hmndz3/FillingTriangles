@@ -1,6 +1,9 @@
 //! Framebuffer en memoria: una rejilla de pixeles que luego se envia a la ventana.
 
 use crate::color::Color;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::Path;
 
 pub struct Framebuffer {
     width: usize,
@@ -59,6 +62,29 @@ impl Framebuffer {
         self.buffer[index] = color.to_u32();
     }
 
+    /// Guarda el contenido actual como PPM binario (P6), util para dejar
+    /// evidencia de cada modo de dibujo sin depender de la ventana.
+    pub fn save_ppm<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        if let Some(parent) = path.as_ref().parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
+        let mut out = BufWriter::new(File::create(path)?);
+        write!(out, "P6
+{} {}
+255
+", self.width, self.height)?;
+        let mut bytes = Vec::with_capacity(self.buffer.len() * 3);
+        for pixel in &self.buffer {
+            bytes.push((pixel >> 16) as u8);
+            bytes.push((pixel >> 8) as u8);
+            bytes.push(*pixel as u8);
+        }
+        out.write_all(&bytes)?;
+        out.flush()
+    }
+
     pub fn get(&self, x: i32, y: i32) -> Option<u32> {
         if x < 0 || y < 0 || x as usize >= self.width || y as usize >= self.height {
             return None;
@@ -71,6 +97,9 @@ impl Framebuffer {
 mod tests {
     use super::Framebuffer;
     use crate::color::Color;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::Path;
 
     #[test]
     fn pinta_dentro_del_area() {
