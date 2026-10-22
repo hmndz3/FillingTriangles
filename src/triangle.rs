@@ -36,6 +36,18 @@ impl TriangleMode {
     }
 }
 
+/// Genera los fragmentos del triangulo a-b-c segun el modo pedido.
+///
+/// Cambiar de algoritmo es cambiar este argumento: el ensamblaje de primitivas
+/// y el procesamiento de fragmentos no se enteran.
+pub fn triangle(a: Vec2, b: Vec2, c: Vec2, mode: TriangleMode, color: Color) -> Vec<Fragment> {
+    match mode {
+        TriangleMode::Wireframe => wireframe(a, b, c, color),
+        TriangleMode::FilledBarycentric => fill_barycentric(a, b, c, color),
+        TriangleMode::FilledScanline => fill_scanline(a, b, c, color),
+    }
+}
+
 /// Contorno del triangulo: las tres aristas como lineas.
 pub fn wireframe(a: Vec2, b: Vec2, c: Vec2, color: Color) -> Vec<Fragment> {
     let mut fragments = line(a, b, color);
@@ -133,7 +145,7 @@ pub fn fill_scanline(a: Vec2, b: Vec2, c: Vec2, color: Color) -> Vec<Fragment> {
 
 #[cfg(test)]
 mod tests {
-    use super::{fill_barycentric, fill_scanline, wireframe, TriangleMode};
+    use super::{fill_barycentric, fill_scanline, triangle, wireframe, TriangleMode};
     use crate::color::Color;
     use crate::vertex::{cross2, Vec2};
     use std::collections::HashSet;
@@ -298,6 +310,19 @@ mod tests {
                 "difieren para {a:?} {b:?} {c:?}"
             );
         }
+    }
+
+    #[test]
+    fn el_modo_elige_el_algoritmo() {
+        let a = Vec2::new(0.0, 0.0);
+        let b = Vec2::new(8.0, 0.0);
+        let c = Vec2::new(0.0, 8.0);
+        let contorno = triangle(a, b, c, TriangleMode::Wireframe, Color::WHITE);
+        let relleno = triangle(a, b, c, TriangleMode::FilledBarycentric, Color::WHITE);
+        let filas = triangle(a, b, c, TriangleMode::FilledScanline, Color::WHITE);
+
+        assert!(contorno.len() < relleno.len());
+        assert_eq!(relleno.len(), filas.len());
     }
 
     #[test]
