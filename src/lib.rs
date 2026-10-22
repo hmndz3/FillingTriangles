@@ -5,6 +5,7 @@
 
 pub mod barycentric;
 pub mod bounds;
+pub mod cli;
 pub mod color;
 pub mod compare;
 pub mod fragment;
