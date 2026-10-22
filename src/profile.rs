@@ -7,8 +7,13 @@
 
 use crate::barycentric::{barycentric, inside};
 use crate::bounds::pixel_bounds;
+use crate::framebuffer::Framebuffer;
+use crate::render::{process_fragments, rasterize, Triangle};
+use crate::scene::new_framebuffer;
 use crate::triangle::TriangleMode;
 use crate::vertex::{cross2, Vec2};
+use std::hint::black_box;
+use std::time::{Duration, Instant};
 
 /// Recorre el rectangulo contenedor probando cada centro, sin generar nada.
 pub fn count_barycentric(a: Vec2, b: Vec2, c: Vec2) -> usize {
@@ -99,11 +104,129 @@ pub fn count_for(mode: TriangleMode) -> fn(Vec2, Vec2, Vec2) -> usize {
     }
 }
 
+/// Reparto del tiempo de un cuadro entre sus fases.
+pub struct PhaseProfile {
+    pub mode: TriangleMode,
+    /// Recorrer la geometria decidiendo que pixeles entran.
+    pub geometry: Duration,
+    /// Crear y guardar los fragmentos: la diferencia contra la rasterizacion
+    /// completa.
+    pub fragments: Duration,
+    /// Limpiar el framebuffer antes de dibujar.
+    pub clear: Duration,
+    /// Escribir los fragmentos en el framebuffer.
+    pub paint: Duration,
+    pub fragment_count: usize,
+}
+
+impl PhaseProfile {
+    pub fn rasterize_total(&self) -> Duration {
+        self.geometry + self.fragments
+    }
+
+    pub fn frame_total(&self) -> Duration {
+        self.rasterize_total() + self.clear + self.paint
+    }
+}
+
+/// Mediana de `repeats` tandas de `iterations` corridas de `f`.
+fn median<F: FnMut()>(iterations: usize, repeats: usize, mut f: F) -> Duration {
+    let mut tandas = Vec::with_capacity(repeats);
+    for _ in 0..repeats {
+        let inicio = Instant::now();
+        for _ in 0..iterations {
+            f();
+        }
+        tandas.push(inicio.elapsed() / iterations as u32);
+    }
+    tandas.sort_unstable();
+    tandas[tandas.len() / 2]
+}
+
+/// Mide cada fase por separado comparando variantes del mismo trabajo.
+///
+/// No es un perfilador de muestreo: en vez de interrumpir el programa, se corre
+/// la geometria sin crear fragmentos y se le resta a la rasterizacion completa.
+/// Medir con un reloj dentro del ciclo de pixeles costaria mas que el propio
+/// trabajo que se quiere medir.
+pub fn measure_phases(
+    triangles: &[Triangle],
+    mode: TriangleMode,
+    iterations: usize,
+    repeats: usize,
+) -> PhaseProfile {
+    let contar = count_for(mode);
+    let fragments = rasterize(triangles, mode);
+    let fragment_count = fragments.len();
+
+    let geometry = median(iterations, repeats, || {
+        let mut total = 0;
+        for [a, b, c] in black_box(triangles) {
+            total += contar(a.position, b.position, c.position);
+        }
+        black_box(total);
+    });
+
+    let completo = median(iterations, repeats, || {
+        black_box(rasterize(black_box(triangles), black_box(mode)));
+    });
+
+    let mut framebuffer: Framebuffer = new_framebuffer();
+    let clear = median(iterations, repeats, || {
+        framebuffer.clear();
+        black_box(framebuffer.buffer().len());
+    });
+    let paint = median(iterations, repeats, || {
+        process_fragments(&mut framebuffer, black_box(&fragments));
+        black_box(framebuffer.buffer().len());
+    });
+
+    PhaseProfile {
+        mode,
+        geometry,
+        // La resta puede dar cero si la geometria se optimiza casi por
+        // completo; saturating_sub evita un panico en ese caso.
+        fragments: completo.saturating_sub(geometry),
+        clear,
+        paint,
+        fragment_count,
+    }
+}
+
+/// Convierte el reparto de fases al formato de pilas plegadas que entienden los
+/// visores de flamegraph: una linea por pila y, como cantidad de muestras, los
+/// nanosegundos medidos.
+pub fn folded_stacks(profiles: &[PhaseProfile]) -> String {
+    let mut salida = String::new();
+    for p in profiles {
+        let modo = p.mode.name();
+        for (pila, tiempo) in [
+            (format!("{modo};rasterize;geometria"), p.geometry),
+            (format!("{modo};rasterize;crear_fragmentos"), p.fragments),
+            (format!("{modo};cuadro;limpiar_framebuffer"), p.clear),
+            (format!("{modo};cuadro;pintar_fragmentos"), p.paint),
+        ] {
+            let nanos = tiempo.as_nanos();
+            if nanos > 0 {
+                salida.push_str(&format!(
+                    "{pila} {nanos}
+"
+                ));
+            }
+        }
+    }
+    salida
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{count_barycentric, count_scanline, count_wireframe};
+    use super::{
+        count_barycentric, count_scanline, count_wireframe, folded_stacks, measure_phases,
+    };
     use crate::color::Color;
+    use crate::scene::demo_triangles;
     use crate::scene::test_cases;
+    use crate::triangle::TriangleMode;
     use crate::triangle::{fill_barycentric, fill_scanline, wireframe};
 
     /// La instrumentacion tiene que contar exactamente los mismos fragmentos
@@ -131,6 +254,28 @@ mod tests {
                 "{}",
                 caso.name
             );
+        }
+    }
+
+    #[test]
+    fn el_reparto_de_fases_cubre_el_cuadro_completo() {
+        let triangulos = demo_triangles();
+        let p = measure_phases(&triangulos, TriangleMode::FilledScanline, 2, 3);
+        assert!(p.fragment_count > 0);
+        assert!(p.frame_total() >= p.rasterize_total());
+        assert!(p.paint > std::time::Duration::ZERO);
+    }
+
+    #[test]
+    fn las_pilas_plegadas_tienen_el_formato_esperado() {
+        let triangulos = demo_triangles();
+        let p = measure_phases(&triangulos, TriangleMode::FilledBarycentric, 2, 3);
+        let texto = folded_stacks(&[p]);
+        assert!(texto.contains("barycentric;rasterize;"));
+        for linea in texto.lines() {
+            let (pila, muestras) = linea.rsplit_once(' ').expect("pila y muestras");
+            assert!(pila.contains(';'));
+            assert!(muestras.parse::<u128>().is_ok());
         }
     }
 }
