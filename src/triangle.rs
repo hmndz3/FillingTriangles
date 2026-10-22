@@ -8,7 +8,7 @@ use crate::bounds::pixel_bounds;
 use crate::color::Color;
 use crate::fragment::Fragment;
 use crate::line::line;
-use crate::vertex::Vec2;
+use crate::vertex::{cross2, Vec2};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TriangleMode {
@@ -70,11 +70,72 @@ pub fn fill_barycentric(a: Vec2, b: Vec2, c: Vec2, color: Color) -> Vec<Fragment
     fragments
 }
 
+/// Relleno por lineas horizontales: se avanza una fila de la imagen a la vez y
+/// se buscan los dos extremos del tramo interior en esa fila.
+///
+/// En lugar de recorrer la fila pixel por pixel, cada arista se despeja como
+/// una desigualdad en x. La arista que sube acota el tramo por la izquierda y
+/// la que baja lo acota por la derecha; el tramo es la interseccion de las tres
+/// restricciones.
+pub fn fill_scanline(a: Vec2, b: Vec2, c: Vec2, color: Color) -> Vec<Fragment> {
+    let Some(bounds) = pixel_bounds(&[a, b, c]) else {
+        return Vec::new();
+    };
+
+    let area2 = cross2(a, b, c);
+    if area2 == 0.0 {
+        // Caso degenerado: los tres vertices estan en una linea.
+        return Vec::new();
+    }
+    // Con este signo las tres desigualdades apuntan al interior sin importar el
+    // orden en que vengan los vertices.
+    let signo = if area2 > 0.0 { 1.0 } else { -1.0 };
+    let aristas = [(a, b), (b, c), (c, a)];
+
+    let mut fragments = Vec::with_capacity(bounds.pixel_count() / 2 + 1);
+    for y in bounds.rows() {
+        let fila = y as f32 + 0.5;
+        let mut desde = bounds.min_x as f32 + 0.5;
+        let mut hasta = bounds.max_x as f32 + 0.5;
+        let mut fila_vacia = false;
+
+        for (p, q) in aristas {
+            // signo * cross2(p, q, (x, fila)) = pendiente * x + termino >= 0
+            let pendiente = -signo * (q.y - p.y);
+            let termino = signo * ((q.x - p.x) * (fila - p.y) + (q.y - p.y) * p.x);
+
+            if pendiente > 0.0 {
+                // La arista cruza la fila por la izquierda del tramo.
+                desde = desde.max(-termino / pendiente);
+            } else if pendiente < 0.0 {
+                // La arista cruza la fila por la derecha del tramo.
+                hasta = hasta.min(-termino / pendiente);
+            } else if termino < 0.0 {
+                // Arista horizontal que deja esta fila completamente afuera.
+                fila_vacia = true;
+                break;
+            }
+        }
+
+        if fila_vacia {
+            continue;
+        }
+
+        // Se generan los pixeles cuyo centro cae dentro del tramo.
+        let inicio = (desde - 0.5).ceil() as i32;
+        let fin = (hasta - 0.5).floor() as i32;
+        for x in inicio..=fin {
+            fragments.push(Fragment::new(x, y, color));
+        }
+    }
+    fragments
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{fill_barycentric, wireframe, TriangleMode};
+    use super::{fill_barycentric, fill_scanline, wireframe, TriangleMode};
     use crate::color::Color;
-    use crate::vertex::Vec2;
+    use crate::vertex::{cross2, Vec2};
     use std::collections::HashSet;
 
     #[test]
@@ -136,6 +197,53 @@ mod tests {
             Vec2::new(10.0, 10.0),
         );
         assert!(p.is_empty());
+    }
+
+    fn posiciones_scanline(a: Vec2, b: Vec2, c: Vec2) -> HashSet<(i32, i32)> {
+        fill_scanline(a, b, c, Color::WHITE)
+            .iter()
+            .map(|f| f.position())
+            .collect()
+    }
+
+    #[test]
+    fn el_scanline_cubre_el_mismo_interior() {
+        let a = Vec2::new(0.0, 0.0);
+        let b = Vec2::new(6.0, 0.0);
+        let c = Vec2::new(0.0, 6.0);
+        assert_eq!(posiciones_scanline(a, b, c), posiciones_baricentricas(a, b, c));
+    }
+
+    #[test]
+    fn el_scanline_no_depende_del_orden_de_los_vertices() {
+        let a = Vec2::new(1.0, 1.0);
+        let b = Vec2::new(9.0, 2.0);
+        let c = Vec2::new(4.0, 8.0);
+        let directo = posiciones_scanline(a, b, c);
+        assert!(!directo.is_empty());
+        assert_eq!(directo, posiciones_scanline(c, b, a));
+    }
+
+    #[test]
+    fn el_scanline_descarta_el_caso_degenerado() {
+        let p = posiciones_scanline(
+            Vec2::new(0.0, 0.0),
+            Vec2::new(4.0, 4.0),
+            Vec2::new(10.0, 10.0),
+        );
+        assert!(p.is_empty());
+    }
+
+    #[test]
+    fn el_scanline_no_duplica_fragmentos() {
+        let fragmentos = fill_scanline(
+            Vec2::new(2.0, 1.0),
+            Vec2::new(11.0, 4.0),
+            Vec2::new(5.0, 9.0),
+            Color::WHITE,
+        );
+        let unicos: HashSet<(i32, i32)> = fragmentos.iter().map(|f| f.position()).collect();
+        assert_eq!(fragmentos.len(), unicos.len());
     }
 
     #[test]
