@@ -1,7 +1,8 @@
 use filling_triangles::cli::{self, Command, HELP};
 use filling_triangles::compare::compare_fills;
-use filling_triangles::scene::{render_scene, test_cases};
+use filling_triangles::scene::{render_scene, test_cases, HEIGHT, WIDTH};
 use filling_triangles::triangle::TriangleMode;
+use minifb::{Key, Window, WindowOptions};
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
@@ -22,11 +23,32 @@ fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             }
         }
-        Command::Window | Command::BenchmarkTriangles => {
+        Command::Window => window_command(),
+        Command::BenchmarkTriangles => {
             println!("modo todavia no implementado: {command:?}");
         }
     }
     ExitCode::SUCCESS
+}
+
+/// Abre la ventana y dibuja la escena.
+fn window_command() {
+    let mut window = Window::new(
+        "Filling triangles",
+        WIDTH,
+        HEIGHT,
+        WindowOptions::default(),
+    )
+    .expect("no se pudo abrir la ventana");
+    window.set_target_fps(60);
+
+    let mode = TriangleMode::FilledBarycentric;
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        let framebuffer = render_scene(mode);
+        window
+            .update_with_buffer(framebuffer.buffer(), WIDTH, HEIGHT)
+            .expect("no se pudo actualizar la ventana");
+    }
 }
 
 /// Guarda una imagen por modo para poder compararlas fuera de la ventana.
