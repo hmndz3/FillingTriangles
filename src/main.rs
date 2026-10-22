@@ -1,5 +1,6 @@
 mod color;
 mod framebuffer;
+mod vertex;
 
 use framebuffer::Framebuffer;
 
