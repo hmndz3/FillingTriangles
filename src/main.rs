@@ -2,6 +2,7 @@ mod color;
 mod fragment;
 mod framebuffer;
 mod line;
+mod triangle;
 mod vertex;
 
 use framebuffer::Framebuffer;
