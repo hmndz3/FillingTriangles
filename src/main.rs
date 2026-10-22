@@ -1,8 +1,13 @@
 mod color;
+mod framebuffer;
 
-use color::Color;
+use framebuffer::Framebuffer;
 
 fn main() {
-    println!("filling_triangles: rasterizador por software");
-    println!("color de fondo: {:#08X}", Color::BLACK.to_u32());
+    let fb = Framebuffer::new(800, 600);
+    println!(
+        "filling_triangles: framebuffer de {}x{}",
+        fb.width(),
+        fb.height()
+    );
 }
