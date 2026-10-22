@@ -4,6 +4,7 @@
 //! el binario como desde las pruebas de integracion en `tests/`.
 
 pub mod barycentric;
+pub mod bench;
 pub mod bounds;
 pub mod cli;
 pub mod color;
