@@ -12,6 +12,7 @@ pub mod compare;
 pub mod fragment;
 pub mod framebuffer;
 pub mod line;
+pub mod profile;
 pub mod render;
 pub mod scene;
 pub mod triangle;
