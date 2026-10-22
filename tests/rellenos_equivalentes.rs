@@ -14,7 +14,10 @@ struct Lcg(u64);
 
 impl Lcg {
     fn next_f32(&mut self, min: f32, max: f32) -> f32 {
-        self.0 = self.0.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.0 = self
+            .0
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         let unidad = ((self.0 >> 33) as f32) / ((1u64 << 31) as f32);
         min + unidad * (max - min)
     }
@@ -91,8 +94,14 @@ fn coinciden_en_triangulos_diminutos() {
     for _ in 0..300 {
         let base = Vec2::new(rng.next_f32(10.0, 50.0), rng.next_f32(10.0, 50.0));
         let a = base;
-        let b = Vec2::new(base.x + rng.next_f32(0.0, 3.0), base.y + rng.next_f32(0.0, 3.0));
-        let c = Vec2::new(base.x + rng.next_f32(0.0, 3.0), base.y + rng.next_f32(0.0, 3.0));
+        let b = Vec2::new(
+            base.x + rng.next_f32(0.0, 3.0),
+            base.y + rng.next_f32(0.0, 3.0),
+        );
+        let c = Vec2::new(
+            base.x + rng.next_f32(0.0, 3.0),
+            base.y + rng.next_f32(0.0, 3.0),
+        );
         let resultado = compare_fills(&triangulo(a, b, c));
         assert!(resultado.matches(), "difieren en {a:?} {b:?} {c:?}");
     }
@@ -103,7 +112,10 @@ fn ningun_relleno_sale_del_contorno() {
     // El contorno y el relleno son el mismo triangulo: todo fragmento del
     // relleno tiene que caer dentro del rectangulo que ocupa el contorno.
     for caso in test_cases() {
-        let contorno = rasterize(std::slice::from_ref(&caso.triangle), TriangleMode::Wireframe);
+        let contorno = rasterize(
+            std::slice::from_ref(&caso.triangle),
+            TriangleMode::Wireframe,
+        );
         let relleno = rasterize(
             std::slice::from_ref(&caso.triangle),
             TriangleMode::FilledBarycentric,

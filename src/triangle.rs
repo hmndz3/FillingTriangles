@@ -225,7 +225,10 @@ mod tests {
         let a = Vec2::new(0.0, 0.0);
         let b = Vec2::new(6.0, 0.0);
         let c = Vec2::new(0.0, 6.0);
-        assert_eq!(posiciones_scanline(a, b, c), posiciones_baricentricas(a, b, c));
+        assert_eq!(
+            posiciones_scanline(a, b, c),
+            posiciones_baricentricas(a, b, c)
+        );
     }
 
     #[test]

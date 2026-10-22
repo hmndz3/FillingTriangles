@@ -62,7 +62,10 @@ mod tests {
     use crate::vertex::Vec2;
 
     fn posiciones(a: Vec2, b: Vec2) -> Vec<(i32, i32)> {
-        line(a, b, Color::WHITE).iter().map(|f| f.position()).collect()
+        line(a, b, Color::WHITE)
+            .iter()
+            .map(|f| f.position())
+            .collect()
     }
 
     #[test]
@@ -99,5 +102,4 @@ mod tests {
         let p = posiciones(Vec2::new(7.0, 9.0), Vec2::new(7.0, 9.0));
         assert_eq!(p, vec![(7, 9)]);
     }
-
 }

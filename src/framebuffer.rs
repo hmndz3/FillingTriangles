@@ -71,10 +71,14 @@ impl Framebuffer {
             }
         }
         let mut out = BufWriter::new(File::create(path)?);
-        write!(out, "P6
+        write!(
+            out,
+            "P6
 {} {}
 255
-", self.width, self.height)?;
+",
+            self.width, self.height
+        )?;
         let mut bytes = Vec::with_capacity(self.buffer.len() * 3);
         for pixel in &self.buffer {
             bytes.push((pixel >> 16) as u8);

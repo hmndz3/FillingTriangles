@@ -1,8 +1,8 @@
 //! Etapas de la tuberia: ensamblaje de primitivas y rasterizacion.
 
 use crate::bounds::pixel_bounds;
-use crate::framebuffer::Framebuffer;
 use crate::fragment::Fragment;
+use crate::framebuffer::Framebuffer;
 use crate::triangle::{triangle, TriangleMode};
 use crate::vertex::Vertex;
 
@@ -28,13 +28,7 @@ pub fn rasterize(triangles: &[Triangle], mode: TriangleMode) -> Vec<Fragment> {
     // copiarse varias veces mientras se rasteriza la escena.
     let mut fragments = Vec::with_capacity(estimated_fragments(triangles, mode));
     for [a, b, c] in triangles {
-        fragments.extend(triangle(
-            a.position,
-            b.position,
-            c.position,
-            mode,
-            a.color,
-        ));
+        fragments.extend(triangle(a.position, b.position, c.position, mode, a.color));
     }
     fragments
 }
@@ -69,8 +63,8 @@ pub fn process_fragments(framebuffer: &mut Framebuffer, fragments: &[Fragment]) 
 #[cfg(test)]
 mod tests {
     use super::{assemble_triangles, process_fragments, rasterize};
-    use crate::framebuffer::Framebuffer;
     use crate::color::Color;
+    use crate::framebuffer::Framebuffer;
     use crate::triangle::TriangleMode;
     use crate::vertex::{Vec2, Vertex};
 

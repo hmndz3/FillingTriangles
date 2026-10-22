@@ -3,7 +3,9 @@ use filling_triangles::cli::{self, Command, HELP};
 use filling_triangles::compare::compare_fills;
 use filling_triangles::profile::{count_barycentric, count_scanline};
 use filling_triangles::render::{process_fragments, rasterize};
-use filling_triangles::scene::{demo_triangles, new_framebuffer, render_scene, test_cases, HEIGHT, WIDTH};
+use filling_triangles::scene::{
+    demo_triangles, new_framebuffer, render_scene, test_cases, HEIGHT, WIDTH,
+};
 use filling_triangles::triangle::TriangleMode;
 use minifb::{Key, Window, WindowOptions};
 use std::hint::black_box;
@@ -100,7 +102,8 @@ por caso ({ITERATIONS} rasterizaciones por tanda, {REPEATS} tandas)
             ITERATIONS,
             REPEATS,
         );
-        let relacion = bar.per_run().as_secs_f64() / scan.per_run().as_secs_f64().max(f64::MIN_POSITIVE);
+        let relacion =
+            bar.per_run().as_secs_f64() / scan.per_run().as_secs_f64().max(f64::MIN_POSITIVE);
         println!(
             "{:<22} {:>12} {:>14?} {:>14?} {:>9.2}x",
             caso.name,
@@ -154,8 +157,7 @@ fn profile_phases_command() {
     ] {
         let solo_geometria = geometria(contar);
         let completo = benchmark(&triangles, mode, ITERATIONS, REPEATS);
-        let porcentaje =
-            100.0 * solo_geometria.as_secs_f64() / completo.per_run().as_secs_f64();
+        let porcentaje = 100.0 * solo_geometria.as_secs_f64() / completo.per_run().as_secs_f64();
         println!(
             "{:<14} {:>14?} {:>14?} {:>14} {:>11.1}%",
             mode.name(),
@@ -184,13 +186,8 @@ fn mode_from_keys(window: &Window) -> Option<TriangleMode> {
 /// cuando cambia el modo; el tiempo que aparece en el titulo es unicamente el
 /// de generar los fragmentos.
 fn window_command() {
-    let mut window = Window::new(
-        "Filling triangles",
-        WIDTH,
-        HEIGHT,
-        WindowOptions::default(),
-    )
-    .expect("no se pudo abrir la ventana");
+    let mut window = Window::new("Filling triangles", WIDTH, HEIGHT, WindowOptions::default())
+        .expect("no se pudo abrir la ventana");
     window.set_target_fps(60);
 
     let triangles = demo_triangles();
