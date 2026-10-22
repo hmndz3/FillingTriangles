@@ -10,5 +10,6 @@ pub mod fragment;
 pub mod framebuffer;
 pub mod line;
 pub mod render;
+pub mod scene;
 pub mod triangle;
 pub mod vertex;
