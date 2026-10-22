@@ -4,6 +4,7 @@ mod color;
 mod fragment;
 mod framebuffer;
 mod line;
+mod render;
 mod triangle;
 mod vertex;
 
