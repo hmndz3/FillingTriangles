@@ -1,3 +1,4 @@
+use filling_triangles::bench::benchmark;
 use filling_triangles::cli::{self, Command, HELP};
 use filling_triangles::compare::compare_fills;
 use filling_triangles::render::{process_fragments, rasterize};
@@ -26,11 +27,42 @@ fn main() -> ExitCode {
             }
         }
         Command::Window => window_command(),
-        Command::BenchmarkTriangles => {
-            println!("modo todavia no implementado: {command:?}");
-        }
+        Command::BenchmarkTriangles => benchmark_command(),
     }
     ExitCode::SUCCESS
+}
+
+/// Rasteriza la escena muchas veces con cada modo y reporta los tiempos.
+/// Termina sin abrir la ventana, que es lo que necesita el perfilador.
+fn benchmark_command() {
+    const ITERATIONS: usize = 100;
+    const REPEATS: usize = 11;
+
+    let triangles = demo_triangles();
+    println!(
+        "escena: {} triangulos, {} rasterizaciones por tanda, {} tandas
+",
+        triangles.len(),
+        ITERATIONS,
+        REPEATS
+    );
+    println!(
+        "{:<14} {:>12} {:>14} {:>12} {:>12} {:>10}",
+        "modo", "fragmentos", "mediana/tanda", "por corrida", "ns/fragmento", "mejor"
+    );
+
+    for mode in TriangleMode::ALL {
+        let r = benchmark(&triangles, mode, ITERATIONS, REPEATS);
+        println!(
+            "{:<14} {:>12} {:>14?} {:>12?} {:>12.2} {:>10?}",
+            r.mode.name(),
+            r.fragments,
+            r.median,
+            r.per_run(),
+            r.nanos_per_fragment(),
+            r.best
+        );
+    }
 }
 
 /// Lee el modo que pide el teclado: 1 contorno, 2 baricentrico, 3 scanline.
