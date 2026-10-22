@@ -12,7 +12,8 @@ coordenadas baricentricas y lineas horizontales.
 cargo run --release                             # ventana: 1 contorno, 2 baricentrico, 3 scanline, Esc salir
 cargo run --release -- --compare-fills          # compara las posiciones que genera cada relleno
 cargo run --release -- --benchmark-triangles    # mide la generacion de fragmentos, sin ventana
-cargo run --release -- --profile-phases         # separa geometria de creacion de fragmentos
+cargo run --release -- --profile-phases         # reparte el tiempo del cuadro entre sus fases
+cargo run --release -- --profile-flamegraph     # escribe docs/perfil/perfil.folded y flamegraph.svg
 cargo run --release -- --dump-images            # guarda out/<modo>.ppm
 cargo test                                      # pruebas unitarias y de integracion
 ```
@@ -81,7 +82,7 @@ duplicados cuando una arista o un vertice caen justo sobre una fila.
 Las reglas son las mismas en los dos algoritmos: se muestrea el centro del pixel
 y un centro que cae exactamente sobre una arista cuenta como interior. Con eso
 los dos rellenos generan **exactamente las mismas posiciones**, no solo imagenes
-parecidas:
+parecidas (`--compare-fills`):
 
 ```
 caso                    baricentr   scanline     solo bar    solo scan
@@ -126,9 +127,9 @@ trabajo medido. La salida completa esta en
 
 | Modo | Fragmentos | Por corrida | ns/fragmento |
 | --- | ---: | ---: | ---: |
-| `wireframe` | 3 484 | 106.7 us | 30.6 |
-| `barycentric` | 164 495 | 3.57 ms | 21.7 |
-| `scanline` | 164 495 | 2.69 ms | 16.4 |
+| `wireframe` | 3 484 | 37.7 us | 10.8 |
+| `barycentric` | 164 495 | 1.286 ms | 7.8 |
+| `scanline` | 164 495 | 1.025 ms | 6.2 |
 
 Los dos rellenos producen la misma cantidad de fragmentos, asi que la
 comparacion es justa: ninguno parece rapido por omitir parte del triangulo.
@@ -138,50 +139,95 @@ interior:
 
 | Caso | Fragmentos | Baricentrico | Scanline | Relacion |
 | --- | ---: | ---: | ---: | ---: |
-| `pequeno` | 75 | 880 ns | 525 ns | 1.7x |
-| `grande` | 99 810 | 2.52 ms | 2.00 ms | 1.3x |
-| `arista_horizontal` | 12 000 | 111.8 us | 39.5 us | 2.8x |
-| `arista_vertical` | 16 510 | 157.7 us | 69.5 us | 2.3x |
-| `parcialmente_afuera` | 36 100 | 384.7 us | 117.5 us | 3.3x |
+| `pequeno` | 75 | 375 ns | 230 ns | 1.6x |
+| `grande` | 99 810 | 875.3 us | 736.2 us | 1.2x |
+| `arista_horizontal` | 12 000 | 46.1 us | 22.8 us | 2.0x |
+| `arista_vertical` | 16 510 | 63.8 us | 33.4 us | 1.9x |
+| `parcialmente_afuera` | 36 100 | 140.9 us | 56.9 us | 2.5x |
 
 El triangulo `grande` cubre casi la mitad de su rectangulo contenedor y ahi la
 diferencia es chica, porque casi todo el tiempo se va en escribir fragmentos. En
 los triangulos delgados o muy inclinados, el relleno baricentrico prueba muchos
 centros que termina descartando y el scanline ni los visita.
 
+### Cuidado con la maquina
+
+La primera tanda de mediciones se tomo con una compilacion corriendo en segundo
+plano y dio 3.57 ms y 2.69 ms por corrida: **casi tres veces mas lento** que los
+numeros de arriba, con el mismo binario. La relacion entre los dos algoritmos se
+mantuvo, pero los tiempos absolutos no significan nada sin decir en que
+condiciones se midieron. Por eso se reporta la mediana de 11 tandas y
+`docs/mediciones.txt` anota el equipo y el estado de la maquina.
+
 ## Donde se va el tiempo
 
 `cargo flamegraph` esta instalado, pero en Windows usa `blondie` y necesita una
 terminal de administrador; sin eso falla con `NotAnAdmin`. Con permisos de
-administrador el comando es:
+administrador el comando del laboratorio funciona tal cual, y el modo
+`--benchmark-triangles` existe justamente para eso (rasteriza muchas veces y
+termina sin abrir la ventana):
 
 ```bash
 cargo flamegraph --release -- --benchmark-triangles
 ```
 
-El modo `--benchmark-triangles` existe justamente para eso: rasteriza muchas
-veces y termina sin abrir la ventana.
+Para no quedarse sin perfil, el programa genera el suyo:
 
-Mientras tanto, `--profile-phases` mide la misma geometria contando fragmentos en
-vez de crearlos ([`profile.rs`](src/profile.rs)), para separar el costo
-geometrico del costo de armar el `Vec`:
+```bash
+cargo run --release -- --profile-flamegraph
+```
 
-| Modo | Solo geometria | Completo | Geometria |
-| --- | ---: | ---: | ---: |
-| `barycentric` | 1.46 ms | 3.67 ms | 39.8 % |
-| `scanline` | 13.3 us | 2.78 ms | 0.5 % |
+Eso escribe [`docs/perfil/perfil.folded`](docs/perfil/perfil.folded) (pilas
+plegadas, el mismo formato que consumen los visores de flamegraph) y lo dibuja
+con `inferno` en [`docs/perfil/flamegraph.svg`](docs/perfil/flamegraph.svg):
 
-Eso explica las dos mediciones anteriores:
+![flamegraph](docs/perfil/flamegraph.svg)
 
-* En el relleno baricentrico, casi el 40 % del tiempo es geometria: tres
-  productos cruz y tres divisiones **por cada centro del rectangulo**, se use o
-  no.
-* En el relleno por filas la geometria es despreciable, porque se resuelve una
-  vez por fila y el largo del tramo sale de una resta. Casi todo su tiempo es
-  crear y guardar fragmentos.
-* Por eso reservar el vector de fragmentos antes de rasterizar bajo la escena de
-  4.75 ms a 3.57 ms en baricentrico y de 3.83 ms a 2.69 ms en scanline: el
-  cuello de botella es la memoria, no el calculo.
+**No es un perfilador de muestreo.** En vez de interrumpir el programa muchas
+veces por segundo, se mide la misma geometria contando fragmentos sin crearlos
+([`profile.rs`](src/profile.rs)) y se le resta a la rasterizacion completa.
+Poner un reloj dentro del ciclo de pixeles costaria mas que el trabajo que se
+quiere medir, y el ancho de cada bloque sigue siendo tiempo medido. La
+contrapartida es que la resta supone que las fases no se solapan: en el relleno
+baricentrico la geometria y el guardado se intercalan en el mismo ciclo, asi que
+parte de su costo de guardado queda contado dentro de la geometria.
+
+| Modo | Geometria | Crear fragmentos | Limpiar | Pintar | Cuadro |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `wireframe` | 0.1 us | 36.3 us | 24.2 us | 2.3 us | 62.9 us |
+| `barycentric` | 506.7 us | 811.1 us | 23.7 us | 104.7 us | 1.446 ms |
+| `scanline` | 4.7 us | 1045.1 us | 22.6 us | 100.3 us | 1.173 ms |
+
+Lo que se ve en el perfil:
+
+* En el relleno baricentrico, el 38 % del tiempo es geometria: tres productos
+  cruz y tres divisiones **por cada centro del rectangulo contenedor**, se use o
+  no el resultado.
+* En el relleno por filas la geometria practicamente no existe (4.7 us contra
+  506 us): se resuelve una vez por fila y el largo del tramo sale de una resta.
+  Todo su tiempo es crear y guardar fragmentos.
+* Limpiar el framebuffer cuesta lo mismo en los tres modos (~23 us, es la imagen
+  completa) y pintar los fragmentos cuesta lo mismo en los dos rellenos, que
+  generan la misma cantidad.
+* Como el cuello de botella es la memoria y no el calculo, reservar el `Vec` de
+  fragmentos antes de rasterizar bajo la escena de 1.639 ms a 1.286 ms en
+  baricentrico (-20 %) y de 1.402 ms a 1.028 ms en scanline (-27 %), medido con
+  el mismo binario en el mismo rato.
+
+## Decisiones que vale la pena mirar
+
+* El contorno ordena los extremos de cada linea antes de recorrerla
+  ([`line.rs`](src/line.rs)): Bresenham rompe los empates siempre hacia el mismo
+  lado, asi que sin eso el contorno de un triangulo cambiaba segun el orden de
+  sus vertices.
+* El rectangulo contenedor se calcula en pixeles enteros con `ceil(min - 0.5)` y
+  `floor(max - 0.5)`, que es exactamente el rango de pixeles cuyo centro puede
+  caer adentro ([`bounds.rs`](src/bounds.rs)).
+* Un triangulo mas chico que un pixel puede no contener ningun centro: ahi
+  `pixel_bounds` devuelve `None` y no se genera nada, sin casos especiales en
+  los rellenos.
+* El relleno baricentrico descarta el caso degenerado **antes** de reservar
+  memoria: el area puede ser cero y el rectangulo contenedor enorme.
 
 ## Estructura
 
@@ -196,4 +242,5 @@ Eso explica las dos mediciones anteriores:
 | [`src/scene.rs`](src/scene.rs) | los triangulos de prueba y la escena de la ventana |
 | [`src/compare.rs`](src/compare.rs) | comparacion de posiciones entre los dos rellenos |
 | [`src/bench.rs`](src/bench.rs) | medicion con mediana y `black_box` |
-| [`src/profile.rs`](src/profile.rs) | instrumentacion para separar fases |
+| [`src/profile.rs`](src/profile.rs) | fases del cuadro y pilas plegadas para el flamegraph |
+| [`tests/rellenos_equivalentes.rs`](tests/rellenos_equivalentes.rs) | los dos rellenos contra los casos del laboratorio y al azar |

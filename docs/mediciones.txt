@@ -1,29 +1,38 @@
-Equipo: Windows 11, cargo 1.97.1, perfil release
+Equipo: Windows 11, cargo 1.97.1, perfil release (opt-level 3, debug = true)
 Fecha: 2026-10-21
+Condiciones: sin compilaciones ni descargas en segundo plano.
 
 $ cargo run --release -- --benchmark-triangles
 escena: 6 triangulos, 100 rasterizaciones por tanda, 11 tandas
 
 modo             fragmentos  mediana/tanda  por corrida ns/fragmento      mejor
-wireframe              3484      10.6726ms    106.726µs        30.63   3.3696ms
-barycentric          164495     356.6707ms   3.566707ms        21.68 347.0902ms
-scanline             164495       269.13ms     2.6913ms        16.36 251.4748ms
+wireframe              3484        3.772ms      37.72µs        10.83   2.6266ms
+barycentric          164495      128.643ms    1.28643ms         7.82 124.4814ms
+scanline             164495     102.4838ms   1.024838ms         6.23 100.3428ms
 
 por caso (20 rasterizaciones por tanda, 7 tandas)
 
 caso                     fragmentos   baricentrico       scanline   relacion
-pequeno                          75          880ns          525ns      1.68x
-grande                        99810      2.51757ms     1.998865ms      1.26x
-orden_inverso                 99810      2.52932ms      1.94755ms      1.30x
-arista_horizontal             12000        111.8µs       39.455µs      2.83x
-arista_vertical               16510       157.66µs       69.505µs      2.27x
-parcialmente_afuera           36100       384.68µs       117.46µs      3.27x
-colineales                        0          245ns          250ns      0.98x
+pequeno                          75          375ns          230ns      1.63x
+grande                        99810       875.33µs      736.165µs      1.19x
+orden_inverso                 99810      873.375µs      733.045µs      1.19x
+arista_horizontal             12000        46.14µs        22.77µs      2.03x
+arista_vertical               16510       63.845µs       33.355µs      1.91x
+parcialmente_afuera           36100      140.895µs       56.925µs      2.48x
+colineales                        0           95ns           95ns      1.00x
 
 $ cargo run --release -- --profile-phases
-modo           solo geometria       completo     fragmentos  geometria %
-barycentric        1.461755ms     3.669233ms         164495        39.8%
-scanline             13.271µs      2.77785ms         164495         0.5%
+modo              geometria crear fragmentos    limpiar     pintar       cuadro  geometria %
+wireframe              55ns         36.271µs   24.249µs    2.339µs     62.914µs         0.2%
+barycentric        506.73µs        811.087µs   23.677µs  104.657µs   1.446151ms        38.5%
+scanline            4.675µs       1.045108ms   22.582µs  100.273µs   1.172638ms         0.4%
+
+$ cargo run --release -- --profile-flamegraph
+docs/perfil/perfil.folded
+docs/perfil/flamegraph.svg
+  wireframe    cuadro 61.167µs (3484 fragmentos)
+  barycentric  cuadro 1.419306ms (164495 fragmentos)
+  scanline     cuadro 1.143051ms (164495 fragmentos)
 
 $ cargo run --release -- --compare-fills
 caso                    baricentr   scanline     solo bar    solo scan
@@ -36,3 +45,13 @@ parcialmente_afuera         36100      36100            0            0
 colineales                      0          0            0            0
 
 Los dos algoritmos generan exactamente las mismas posiciones.
+
+--- Efecto de reservar el vector de fragmentos (misma maquina, mismo rato) ---
+sin reservar:  barycentric 1.639414ms   scanline 1.401845ms   (por corrida)
+con reservar:  barycentric 1.314475ms   scanline 1.028293ms   (por corrida)
+
+--- Nota sobre la varianza ---
+Una primera tanda medida con una compilacion corriendo en segundo plano dio
+3.57ms y 2.69ms por corrida: casi 3 veces mas lento. Los numeros de arriba
+son con la maquina libre. Por eso se reporta la mediana de 11 tandas y se
+deja escrito en que condiciones se midio.
