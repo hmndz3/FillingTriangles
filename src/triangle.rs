@@ -66,11 +66,18 @@ pub fn fill_barycentric(a: Vec2, b: Vec2, c: Vec2, color: Color) -> Vec<Fragment
         return Vec::new();
     };
 
+    if cross2(a, b, c) == 0.0 {
+        // Caso degenerado: se descarta antes de reservar memoria para el
+        // rectangulo contenedor, que puede ser grande aunque el area sea cero.
+        return Vec::new();
+    }
+
     // Un triangulo ocupa aproximadamente la mitad de su rectangulo contenedor.
     let mut fragments = Vec::with_capacity(bounds.pixel_count() / 2 + 1);
     for y in bounds.rows() {
         for x in bounds.columns() {
             let centro = Vec2::pixel_center(x, y);
+            // El area ya se verifico, asi que aqui siempre hay coordenadas.
             let Some(pesos) = barycentric(a, b, c, centro) else {
                 return Vec::new();
             };
