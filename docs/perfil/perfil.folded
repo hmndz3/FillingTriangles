@@ -1,0 +1,12 @@
+wireframe;rasterize;geometria 60
+wireframe;rasterize;crear_fragmentos 34817
+wireframe;cuadro;limpiar_framebuffer 23109
+wireframe;cuadro;pintar_fragmentos 2335
+barycentric;rasterize;geometria 510811
+barycentric;rasterize;crear_fragmentos 792752
+barycentric;cuadro;limpiar_framebuffer 22553
+barycentric;cuadro;pintar_fragmentos 101391
+scanline;rasterize;geometria 4660
+scanline;rasterize;crear_fragmentos 1210239
+scanline;cuadro;limpiar_framebuffer 22565
+scanline;cuadro;pintar_fragmentos 123745

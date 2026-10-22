@@ -12,6 +12,8 @@ pub enum Command {
     DumpImages,
     /// Separa el tiempo de geometria del de crear y guardar fragmentos.
     ProfilePhases,
+    /// Escribe el perfil como pilas plegadas y como flamegraph.svg.
+    ProfileFlamegraph,
     Help,
 }
 
@@ -25,6 +27,7 @@ Uso: filling_triangles [opcion]
   --benchmark-triangles   mide la generacion de fragmentos sin abrir la ventana
   --dump-images           guarda out/<modo>.ppm para cada modo de dibujo
   --profile-phases        separa el tiempo de geometria del de los fragmentos
+  --profile-flamegraph    escribe docs/perfil/perfil.folded y flamegraph.svg
   -h, --help              muestra esta ayuda
 ";
 
@@ -36,6 +39,7 @@ pub fn parse<I: IntoIterator<Item = String>>(args: I) -> Result<Command, String>
             "--benchmark-triangles" => Command::BenchmarkTriangles,
             "--dump-images" => Command::DumpImages,
             "--profile-phases" => Command::ProfilePhases,
+            "--profile-flamegraph" => Command::ProfileFlamegraph,
             "-h" | "--help" => Command::Help,
             otro => return Err(format!("argumento desconocido: {otro}")),
         };

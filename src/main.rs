@@ -1,12 +1,13 @@
 use filling_triangles::bench::benchmark;
 use filling_triangles::cli::{self, Command, HELP};
 use filling_triangles::compare::compare_fills;
-use filling_triangles::profile::measure_phases;
+use filling_triangles::profile::{folded_stacks, measure_phases};
 use filling_triangles::render::{process_fragments, rasterize};
 use filling_triangles::scene::{
     demo_triangles, new_framebuffer, render_scene, test_cases, HEIGHT, WIDTH,
 };
 use filling_triangles::triangle::TriangleMode;
+use inferno::flamegraph::{self, Options};
 use minifb::{Key, Window, WindowOptions};
 use std::process::ExitCode;
 use std::time::Instant;
@@ -32,6 +33,12 @@ fn main() -> ExitCode {
         Command::Window => window_command(),
         Command::BenchmarkTriangles => benchmark_command(),
         Command::ProfilePhases => profile_phases_command(),
+        Command::ProfileFlamegraph => {
+            if let Err(error) = profile_flamegraph_command() {
+                eprintln!("no se pudo escribir el perfil: {error}");
+                return ExitCode::FAILURE;
+            }
+        }
     }
     ExitCode::SUCCESS
 }
@@ -141,6 +148,47 @@ fn profile_phases_command() {
             porcentaje
         );
     }
+}
+
+/// Escribe el perfil en el formato de pilas plegadas y lo dibuja como
+/// flamegraph. El ancho de cada bloque es el tiempo medido de esa fase.
+fn profile_flamegraph_command() -> std::io::Result<()> {
+    const ITERATIONS: usize = 100;
+    const REPEATS: usize = 11;
+
+    let triangles = demo_triangles();
+    let profiles: Vec<_> = TriangleMode::ALL
+        .iter()
+        .map(|&mode| measure_phases(&triangles, mode, ITERATIONS, REPEATS))
+        .collect();
+    let folded = folded_stacks(&profiles);
+
+    std::fs::create_dir_all("docs/perfil")?;
+    std::fs::write("docs/perfil/perfil.folded", &folded)?;
+    println!("docs/perfil/perfil.folded");
+
+    let mut opciones = Options::default();
+    opciones.title = "filling_triangles: un cuadro de la escena".to_string();
+    opciones.subtitle = Some(
+        "tiempo medido por fase, mediana de 11 tandas de 100 corridas (no es muestreo)".to_string(),
+    );
+    opciones.count_name = "ns".to_string();
+    opciones.hash = true;
+
+    let salida = std::io::BufWriter::new(std::fs::File::create("docs/perfil/flamegraph.svg")?);
+    flamegraph::from_lines(&mut opciones, folded.lines(), salida)
+        .map_err(|error| std::io::Error::other(error.to_string()))?;
+    println!("docs/perfil/flamegraph.svg");
+
+    for p in &profiles {
+        println!(
+            "  {:<12} cuadro {:?} ({} fragmentos)",
+            p.mode.name(),
+            p.frame_total(),
+            p.fragment_count
+        );
+    }
+    Ok(())
 }
 
 /// Lee el modo que pide el teclado: 1 contorno, 2 baricentrico, 3 scanline.
