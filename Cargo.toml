@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+inferno = { version = "0.12.8", default-features = false }
 minifb = "0.29"
 
 # El perfilador necesita simbolos para poder nombrar las funciones del binario

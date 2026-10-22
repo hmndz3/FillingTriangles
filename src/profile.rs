@@ -172,13 +172,16 @@ pub fn measure_phases(
     });
 
     let mut framebuffer: Framebuffer = new_framebuffer();
+    // Se pasa el buffer entero por `black_box`: con solo mirar su largo, el
+    // optimizador borraba la escritura de los pixeles y las dos fases median
+    // cero.
     let clear = median(iterations, repeats, || {
         framebuffer.clear();
-        black_box(framebuffer.buffer().len());
+        black_box(framebuffer.buffer());
     });
     let paint = median(iterations, repeats, || {
         process_fragments(&mut framebuffer, black_box(&fragments));
-        black_box(framebuffer.buffer().len());
+        black_box(framebuffer.buffer());
     });
 
     PhaseProfile {
