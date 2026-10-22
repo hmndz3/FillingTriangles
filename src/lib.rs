@@ -6,6 +6,7 @@
 pub mod barycentric;
 pub mod bounds;
 pub mod color;
+pub mod compare;
 pub mod fragment;
 pub mod framebuffer;
 pub mod line;
