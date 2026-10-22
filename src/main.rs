@@ -1,4 +1,5 @@
 mod color;
+mod fragment;
 mod framebuffer;
 mod vertex;
 
