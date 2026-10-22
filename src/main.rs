@@ -63,6 +63,50 @@ fn benchmark_command() {
             r.best
         );
     }
+
+    benchmark_per_case();
+}
+
+/// Mide cada caso por separado: un triangulo chico y uno grande no se
+/// comportan igual aunque el algoritmo sea el mismo.
+fn benchmark_per_case() {
+    const ITERATIONS: usize = 20;
+    const REPEATS: usize = 7;
+
+    println!(
+        "
+por caso ({ITERATIONS} rasterizaciones por tanda, {REPEATS} tandas)
+"
+    );
+    println!(
+        "{:<22} {:>12} {:>14} {:>14} {:>10}",
+        "caso", "fragmentos", "baricentrico", "scanline", "relacion"
+    );
+
+    for caso in test_cases() {
+        let triangulo = [caso.triangle];
+        let bar = benchmark(
+            &triangulo,
+            TriangleMode::FilledBarycentric,
+            ITERATIONS,
+            REPEATS,
+        );
+        let scan = benchmark(
+            &triangulo,
+            TriangleMode::FilledScanline,
+            ITERATIONS,
+            REPEATS,
+        );
+        let relacion = bar.per_run().as_secs_f64() / scan.per_run().as_secs_f64().max(f64::MIN_POSITIVE);
+        println!(
+            "{:<22} {:>12} {:>14?} {:>14?} {:>9.2}x",
+            caso.name,
+            bar.fragments,
+            bar.per_run(),
+            scan.per_run(),
+            relacion
+        );
+    }
 }
 
 /// Lee el modo que pide el teclado: 1 contorno, 2 baricentrico, 3 scanline.
