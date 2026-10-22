@@ -1,10 +1,12 @@
 use filling_triangles::bench::benchmark;
 use filling_triangles::cli::{self, Command, HELP};
 use filling_triangles::compare::compare_fills;
+use filling_triangles::profile::{count_barycentric, count_scanline};
 use filling_triangles::render::{process_fragments, rasterize};
 use filling_triangles::scene::{demo_triangles, new_framebuffer, render_scene, test_cases, HEIGHT, WIDTH};
 use filling_triangles::triangle::TriangleMode;
 use minifb::{Key, Window, WindowOptions};
+use std::hint::black_box;
 use std::process::ExitCode;
 use std::time::Instant;
 
@@ -28,6 +30,7 @@ fn main() -> ExitCode {
         }
         Command::Window => window_command(),
         Command::BenchmarkTriangles => benchmark_command(),
+        Command::ProfilePhases => profile_phases_command(),
     }
     ExitCode::SUCCESS
 }
@@ -105,6 +108,61 @@ por caso ({ITERATIONS} rasterizaciones por tanda, {REPEATS} tandas)
             bar.per_run(),
             scan.per_run(),
             relacion
+        );
+    }
+}
+
+/// Mide la geometria sola (contando fragmentos sin crearlos) contra la
+/// rasterizacion completa. La diferencia es lo que cuesta armar el `Vec` de
+/// fragmentos.
+fn profile_phases_command() {
+    const ITERATIONS: usize = 100;
+    const REPEATS: usize = 11;
+
+    let triangles = demo_triangles();
+    let geometria = |contar: fn(_, _, _) -> usize| {
+        let mut tandas = Vec::with_capacity(REPEATS);
+        for _ in 0..REPEATS {
+            let inicio = Instant::now();
+            for _ in 0..ITERATIONS {
+                let mut total = 0;
+                for [a, b, c] in black_box(&triangles) {
+                    total += contar(a.position, b.position, c.position);
+                }
+                black_box(total);
+            }
+            tandas.push(inicio.elapsed() / ITERATIONS as u32);
+        }
+        tandas.sort_unstable();
+        tandas[tandas.len() / 2]
+    };
+
+    println!(
+        "{:<14} {:>14} {:>14} {:>14} {:>12}",
+        "modo", "solo geometria", "completo", "fragmentos", "geometria %"
+    );
+
+    for (mode, contar) in [
+        (
+            TriangleMode::FilledBarycentric,
+            count_barycentric as fn(_, _, _) -> usize,
+        ),
+        (
+            TriangleMode::FilledScanline,
+            count_scanline as fn(_, _, _) -> usize,
+        ),
+    ] {
+        let solo_geometria = geometria(contar);
+        let completo = benchmark(&triangles, mode, ITERATIONS, REPEATS);
+        let porcentaje =
+            100.0 * solo_geometria.as_secs_f64() / completo.per_run().as_secs_f64();
+        println!(
+            "{:<14} {:>14?} {:>14?} {:>14} {:>11.1}%",
+            mode.name(),
+            solo_geometria,
+            completo.per_run(),
+            completo.fragments,
+            porcentaje
         );
     }
 }

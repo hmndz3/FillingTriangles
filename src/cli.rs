@@ -10,6 +10,8 @@ pub enum Command {
     BenchmarkTriangles,
     /// Guarda una imagen por cada modo de dibujo.
     DumpImages,
+    /// Separa el tiempo de geometria del de crear y guardar fragmentos.
+    ProfilePhases,
     Help,
 }
 
@@ -22,6 +24,7 @@ Uso: filling_triangles [opcion]
   --compare-fills         compara las posiciones de los dos rellenos
   --benchmark-triangles   mide la generacion de fragmentos sin abrir la ventana
   --dump-images           guarda out/<modo>.ppm para cada modo de dibujo
+  --profile-phases        separa el tiempo de geometria del de los fragmentos
   -h, --help              muestra esta ayuda
 ";
 
@@ -32,6 +35,7 @@ pub fn parse<I: IntoIterator<Item = String>>(args: I) -> Result<Command, String>
             "--compare-fills" => Command::CompareFills,
             "--benchmark-triangles" => Command::BenchmarkTriangles,
             "--dump-images" => Command::DumpImages,
+            "--profile-phases" => Command::ProfilePhases,
             "-h" | "--help" => Command::Help,
             otro => return Err(format!("argumento desconocido: {otro}")),
         };
