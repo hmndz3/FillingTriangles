@@ -7,6 +7,7 @@
 
 use crate::barycentric::{barycentric, inside};
 use crate::bounds::pixel_bounds;
+use crate::triangle::TriangleMode;
 use crate::vertex::{cross2, Vec2};
 
 /// Recorre el rectangulo contenedor probando cada centro, sin generar nada.
@@ -75,12 +76,35 @@ pub fn count_scanline(a: Vec2, b: Vec2, c: Vec2) -> usize {
     total
 }
 
+/// Recorre las tres aristas con Bresenham contando pixeles, sin generarlos.
+pub fn count_wireframe(a: Vec2, b: Vec2, c: Vec2) -> usize {
+    count_line(a, b) + count_line(b, c) + count_line(c, a)
+}
+
+fn count_line(a: Vec2, b: Vec2) -> usize {
+    let p = (a.x.floor() as i32, a.y.floor() as i32);
+    let q = (b.x.floor() as i32, b.y.floor() as i32);
+    // Bresenham visita un pixel por paso en el eje mas largo, mas el inicial.
+    let dx = (q.0 - p.0).abs();
+    let dy = (q.1 - p.1).abs();
+    (dx.max(dy) + 1) as usize
+}
+
+/// La version que solo cuenta, para el modo pedido.
+pub fn count_for(mode: TriangleMode) -> fn(Vec2, Vec2, Vec2) -> usize {
+    match mode {
+        TriangleMode::Wireframe => count_wireframe,
+        TriangleMode::FilledBarycentric => count_barycentric,
+        TriangleMode::FilledScanline => count_scanline,
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{count_barycentric, count_scanline};
+    use super::{count_barycentric, count_scanline, count_wireframe};
     use crate::color::Color;
     use crate::scene::test_cases;
-    use crate::triangle::{fill_barycentric, fill_scanline};
+    use crate::triangle::{fill_barycentric, fill_scanline, wireframe};
 
     /// La instrumentacion tiene que contar exactamente los mismos fragmentos
     /// que generan los rellenos de verdad.
@@ -98,6 +122,12 @@ mod tests {
             assert_eq!(
                 count_scanline(pa, pb, pc),
                 fill_scanline(pa, pb, pc, Color::WHITE).len(),
+                "{}",
+                caso.name
+            );
+            assert_eq!(
+                count_wireframe(pa, pb, pc),
+                wireframe(pa, pb, pc, Color::WHITE).len(),
                 "{}",
                 caso.name
             );
