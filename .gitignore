@@ -1,4 +1,6 @@
 /target
 /out
-*.svg
+
+# El perfil generado si se entrega: solo se ignoran los temporales del
+# perfilador del sistema.
 perf.data*
