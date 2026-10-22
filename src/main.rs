@@ -1,4 +1,5 @@
 mod barycentric;
+mod bounds;
 mod color;
 mod fragment;
 mod framebuffer;
