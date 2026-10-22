@@ -1,5 +1,6 @@
 //! Etapas de la tuberia: ensamblaje de primitivas y rasterizacion.
 
+use crate::bounds::pixel_bounds;
 use crate::framebuffer::Framebuffer;
 use crate::fragment::Fragment;
 use crate::triangle::{triangle, TriangleMode};
@@ -23,7 +24,9 @@ pub fn assemble_triangles(vertices: &[Vertex]) -> Vec<Triangle> {
 /// coordenadas baricentricas quedan disponibles para interpolar atributos mas
 /// adelante.
 pub fn rasterize(triangles: &[Triangle], mode: TriangleMode) -> Vec<Fragment> {
-    let mut fragments = Vec::new();
+    // Reservar de una vez evita que el vector de fragmentos tenga que crecer y
+    // copiarse varias veces mientras se rasteriza la escena.
+    let mut fragments = Vec::with_capacity(estimated_fragments(triangles, mode));
     for [a, b, c] in triangles {
         fragments.extend(triangle(
             a.position,
@@ -34,6 +37,24 @@ pub fn rasterize(triangles: &[Triangle], mode: TriangleMode) -> Vec<Fragment> {
         ));
     }
     fragments
+}
+
+/// Cuantos fragmentos cabe esperar de la escena. Para el contorno basta el
+/// perimetro del rectangulo contenedor y para los rellenos, la mitad de su
+/// area: son estimaciones, solo sirven para pedir memoria una sola vez.
+fn estimated_fragments(triangles: &[Triangle], mode: TriangleMode) -> usize {
+    triangles
+        .iter()
+        .filter_map(|[a, b, c]| pixel_bounds(&[a.position, b.position, c.position]))
+        .map(|bounds| match mode {
+            TriangleMode::Wireframe => {
+                let ancho = (bounds.max_x - bounds.min_x + 1) as usize;
+                let alto = (bounds.max_y - bounds.min_y + 1) as usize;
+                2 * (ancho + alto)
+            }
+            _ => bounds.pixel_count() / 2 + 1,
+        })
+        .sum()
 }
 
 /// Procesamiento de fragmentos: escribe cada fragmento en el framebuffer.
