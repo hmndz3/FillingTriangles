@@ -6,11 +6,18 @@ use crate::vertex::Vec2;
 
 /// Genera los fragmentos de la linea que une `a` con `b`, ambos extremos
 /// incluidos. Las posiciones flotantes se redondean al pixel que las contiene.
+///
+/// Bresenham rompe los empates siempre hacia el mismo lado, asi que recorrer la
+/// linea al reves puede devolver otro conjunto de pixeles. Para que el contorno
+/// de un triangulo no dependa del orden de sus vertices, los extremos se
+/// ordenan antes de recorrerlos.
 pub fn line(a: Vec2, b: Vec2, color: Color) -> Vec<Fragment> {
-    let mut x0 = a.x.floor() as i32;
-    let mut y0 = a.y.floor() as i32;
-    let x1 = b.x.floor() as i32;
-    let y1 = b.y.floor() as i32;
+    let (inicio, fin) = ordenar(a, b);
+
+    let mut x0 = inicio.0;
+    let mut y0 = inicio.1;
+    let x1 = fin.0;
+    let y1 = fin.1;
 
     let dx = (x1 - x0).abs();
     let dy = -(y1 - y0).abs();
@@ -35,6 +42,17 @@ pub fn line(a: Vec2, b: Vec2, color: Color) -> Vec<Fragment> {
         }
     }
     fragments
+}
+
+/// Devuelve los dos extremos en pixeles enteros, siempre en el mismo orden.
+fn ordenar(a: Vec2, b: Vec2) -> ((i32, i32), (i32, i32)) {
+    let p = (a.x.floor() as i32, a.y.floor() as i32);
+    let q = (b.x.floor() as i32, b.y.floor() as i32);
+    if (p.1, p.0) <= (q.1, q.0) {
+        (p, q)
+    } else {
+        (q, p)
+    }
 }
 
 #[cfg(test)]
@@ -63,6 +81,17 @@ mod tests {
     fn diagonal_de_45_grados() {
         let p = posiciones(Vec2::new(0.0, 0.0), Vec2::new(3.0, 3.0));
         assert_eq!(p, vec![(0, 0), (1, 1), (2, 2), (3, 3)]);
+    }
+
+    #[test]
+    fn invertir_los_extremos_da_el_mismo_conjunto() {
+        let a = Vec2::new(-3.0, 2.0);
+        let b = Vec2::new(9.0, 7.0);
+        let mut ida = posiciones(a, b);
+        let mut vuelta = posiciones(b, a);
+        ida.sort_unstable();
+        vuelta.sort_unstable();
+        assert_eq!(ida, vuelta);
     }
 
     #[test]
