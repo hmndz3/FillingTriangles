@@ -1,6 +1,7 @@
 mod color;
 mod fragment;
 mod framebuffer;
+mod line;
 mod vertex;
 
 use framebuffer::Framebuffer;
