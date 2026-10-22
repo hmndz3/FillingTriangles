@@ -99,11 +99,17 @@ pub fn demo_triangles() -> Vec<Triangle> {
     assemble_triangles(&demo_vertices())
 }
 
-/// Dibuja la escena completa con un modo y devuelve el framebuffer.
-pub fn render_scene(mode: TriangleMode) -> Framebuffer {
+/// Framebuffer del tamano de la escena, ya limpio con el color de fondo.
+pub fn new_framebuffer() -> Framebuffer {
     let mut framebuffer = Framebuffer::new(WIDTH, HEIGHT);
     framebuffer.set_background_color(Color::new(18, 18, 24));
     framebuffer.clear();
+    framebuffer
+}
+
+/// Dibuja la escena completa con un modo y devuelve el framebuffer.
+pub fn render_scene(mode: TriangleMode) -> Framebuffer {
+    let mut framebuffer = new_framebuffer();
     let fragments = rasterize(&demo_triangles(), mode);
     process_fragments(&mut framebuffer, &fragments);
     framebuffer
